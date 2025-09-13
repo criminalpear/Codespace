@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-g">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codespace Proxy</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <form id="url-form">
+      <input type="text" id="url-input" placeholder="Enter a URL to browse..." autocomplete="off">
+      <button type="submit">Go</button>
+    </form>
+  </header>
+
+  <main>
+    <iframe id="content-frame" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation"></iframe>
+  </main>
+
+  <footer>
+    <div id="console">
+      <div id="console-output">
+        <div class="log-entry welcome">Welcome to the custom console! Logs from the page will appear here.</div>
+      </div>
+      <div id="console-input-container">
+        <span>&gt;</span>
+        <input type="text" id="console-input" placeholder="Execute JavaScript in the page context...">
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const urlForm = document.getElementById('url-form');
+    const urlInput = document.getElementById('url-input');
+    const contentFrame = document.getElementById('content-frame');
+    const consoleOutput = document.getElementById('console-output');
+    const consoleInput = document.getElementById('console-input');
+
+    // Handle URL submission
+    urlForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      let url = urlInput.value.trim();
+      if (url) {
+        // Set the iframe source to our proxy endpoint
+        contentFrame.src = `/proxy?url=${encodeURIComponent(url)}`;
+      }
+    });
+
+    // Handle console input
+    consoleInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const command = consoleInput.value;
+        logToConsole(command, 'command');
+        
+        // Send the command to the iframe to be executed
+        contentFrame.contentWindow.postMessage({ type: 'execute-script', script: command }, '*');
+        
+        consoleInput.value = '';
+      }
+    });
+
+    // Listen for messages from the iframe (for console.log)
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'console-log') {
+        logToConsole(event.data.data.join(' '), 'log');
+      } else if (event.data && event.data.type === 'console-error') {
+        logToConsole(`Error: ${event.data.data}`, 'error');
+      }
+    });
+
+    function logToConsole(message, type = 'log') {
+      const entry = document.createElement('div');
+      entry.classList.add('log-entry', type);
+      entry.textContent = message;
+      consoleOutput.appendChild(entry);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight; // Auto-scroll
+    }
+  </script>
+</body>
+</html>

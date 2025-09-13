@@ -1,0 +1,110 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  background-color: #f0f2f5;
+}
+
+header {
+  padding: 10px;
+  background-color: #fff;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#url-form {
+  width: 100%;
+  display: flex;
+}
+
+#url-input {
+  flex-grow: 1;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+#url-form button {
+  padding: 8px 16px;
+  margin-left: 8px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+main {
+  flex-grow: 1;
+  display: flex;
+}
+
+#content-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+footer {
+  height: 200px; /* Console height */
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #333;
+}
+
+#console {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: "Courier New", Courier, monospace;
+}
+
+#console-output {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.log-entry {
+  padding: 2px 0;
+  white-space: pre-wrap;
+}
+.log-entry.command {
+  color: #9cdcfe;
+}
+.log-entry.error {
+  color: #f48771;
+}
+.log-entry.welcome {
+  color: #4ec9b0;
+}
+
+#console-input-container {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-top: 1px solid #333;
+}
+
+#console-input-container span {
+  margin-right: 8px;
+  color: #9cdcfe;
+}
+
+#console-input {
+  flex-grow: 1;
+  background: none;
+  border: none;
+  color: #d4d4d4;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+}
