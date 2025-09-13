@@ -1,5 +1,6 @@
 const express = require('express' );
 const { createProxyMiddleware } = require('http-proxy-middleware' );
+const { URL } = require('url'); // Import the URL module
 
 const app = express();
 const PORT = 3000;
@@ -9,24 +10,41 @@ app.use(express.static('public'));
 
 // The proxy middleware
 const proxy = createProxyMiddleware({
-  // The target will be set dynamically by a router function
   router: (req) => {
-    // Extract the target URL from the query parameter
     const targetUrl = req.query.url;
-    if (targetUrl) {
-      // Ensure the target URL has a protocol
-      return targetUrl.startsWith('http' ) ? targetUrl : `https://` + targetUrl;
+    if (!targetUrl) {
+      return 'https://example.com'; // Default target
     }
-    return 'https://example.com'; // Default target if no URL is provided
+    // Use the URL constructor for robust parsing
+    const target = new URL(targetUrl.startsWith('http' ) ? targetUrl : `https://${targetUrl}` );
+    return target;
   },
   changeOrigin: true,
-  pathRewrite: (path, req ) => {
-    // Remove the '/proxy?url=...' part from the path
-    return path.replace(/^\/proxy/, '');
+  pathRewrite: (path, req) => {
+    // This function now needs to return just the path and search part of the target URL
+    const targetUrl = req.query.url;
+    const target = new URL(targetUrl.startsWith('http' ) ? targetUrl : `https://${targetUrl}` );
+    // Return the pathname and search from the original target URL
+    // This prevents the proxy from appending our own query string (/proxy?url=...) to the target request
+    return target.pathname + target.search;
   },
-  logLevel: 'silent', // Keep the server console clean
-  selfHandleResponse: true, // Important: allows us to modify the response
+  logLevel: 'info', // Changed to 'info' for better debugging during setup
+  selfHandleResponse: true,
+  
+  // --- FIXES ADDED HERE ---
+  followRedirects: true, // Crucial: Tells the proxy to follow redirects on the server-side
+  onProxyReq: (proxyReq, req, res) => {
+    // Some websites check the 'host' header. We need to set it correctly.
+    const targetUrl = req.query.url;
+    const target = new URL(targetUrl.startsWith('http' ) ? targetUrl : `https://${targetUrl}` );
+    proxyReq.setHeader('host', target.hostname);
+  },
+  // --- END OF FIXES ---
+
   onProxyRes: (proxyRes, req, res) => {
+    // We need to prevent the browser from caching a 301/302 response
+    delete proxyRes.headers['location'];
+
     let body = [];
     proxyRes.on('data', (chunk) => body.push(chunk));
     proxyRes.on('end', () => {
@@ -38,16 +56,38 @@ const proxy = createProxyMiddleware({
           // Intercept console.log on the proxied page
           const originalLog = console.log;
           console.log = function(...args) {
-            window.parent.postMessage({ type: 'console-log', data: args }, '*');
+            try {
+              const formattedArgs = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg);
+              window.parent.postMessage({ type: 'console-log', data: formattedArgs }, '*');
+            } catch (e) {
+              // Fallback for circular structures
+              window.parent.postMessage({ type: 'console-log', data: ['[Unserializable Object]'] }, '*');
+            }
             originalLog.apply(console, args);
           };
           window.addEventListener('error', function(e) {
             window.parent.postMessage({ type: 'console-error', data: e.message }, '*');
           });
+
+          // Listen for commands from the parent window
+          window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'execute-script') {
+              try {
+                eval(event.data.script);
+              } catch (e) {
+                console.log('Execution Error:', e.message);
+              }
+            }
+          });
         </script>
       `;
-      html = html.replace('</head>', `${injectionScript}</head>`);
       
+      // A more robust way to inject the script
+      if (proxyRes.headers['content-type'] && proxyRes.headers['content-type'].includes('text/html')) {
+        html = html.replace('</head>', `${injectionScript}</head>`);
+      }
+      
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
       res.end(html);
     });
   }
